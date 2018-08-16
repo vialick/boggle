@@ -1,6 +1,7 @@
 import random
 from collections import OrderedDict
-import tkinter # move this I guess
+import tkinter
+from tkinter import font
 
 class Board:
     """A Boggle-style gameboard"""
@@ -33,8 +34,9 @@ class Board:
                                 'w': 	0.97801,
                                 'x': 	0.97951,
                                 'y': 	0.99925,
-                                'z': 	1})    # Data from http://www.oxfordmathcenter.com/drupal7/node/353
-                                        # this could be made into a generator (or at least two tuples)
+                                'z': 	1})
+    # Data from http://www.oxfordmathcenter.com/drupal7/node/353
+    # this could be made into a generator (or at least two tuples)
 
     def __init__(self, height=5, width=5):
         """initialise the board"""
@@ -120,22 +122,51 @@ class ConsoleGame (Game):
 
 
 
-class GuiGame (Game):
+class GuiGame (Game): # may separate these into different classes for each window
 
     board_window = tkinter.Tk()
-    cells = None
+    search_window = tkinter.Tk()
+    score_window = tkinter.Tk()
+    
+    cells = []
 
-    display = {'font': 'Courier 40'}
+    disp_font = font.Font(size = 32)
+    cell_settings = {'activebackground' : 'yellow',
+                     'relief' : 'ridge',
+                     'width' : 2}
+    active = set()
 
     def __init__(self):
-        self.cells = [[tkinter.Label(text=x) for x in y] for y in self.gamestate.cells] # put in all the stuff from display
-        
-        [[self.cells[r][c].grid(row = r, column = c) for c in range(self.gamestate.width)] for r in range(self.gamestate.height)]
+        #board window
+        for r, i in enumerate(self.gamestate.cells):
+            self.cells.append([])
+            for c, j in enumerate(i):
+                self.cells[r].append(tkinter.Label(self.board_window, text = j, **self.cell_settings))
+                self.cells[r][c]['font'] = self.disp_font
+                self.cells[r][c].grid(row = r, column = c)
 
-    def display(self, highlight = None):
+        self.search_window() # show search window
+        self.score_window() # show score window
+
+    def search_window(self):
+        """displays search window"""
+        tkinter.Label(self.search_window, text = 'Word').grid(row=0,column=0)
+        tkinter.Entry(self.search_window).grid(row=0, column=1)
+        tkinter.Button(self.search_window, text = "go").grid(row=0, column=2)
+
+    def score_window(self):
+        for i in self.players:
+            pass
+
+    def highlight(self, target = None):
         """display the board, highlighting specified cells"""
-        for c, i in enumerate(self.cells):
-            for r, j in enumerate(i):
-                pass
-                
-                
+        
+        #remove existing highlighting
+        for i in self.active:
+            self.cells[i[0]][i[1]].config(state = 'normal')
+
+        self.active = target
+
+        #apply highlighting
+        for i in self.active:
+            self.cells[i[0]][i[1]].config(state = 'active')
