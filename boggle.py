@@ -2,6 +2,7 @@ import random
 from collections import OrderedDict
 import tkinter
 from tkinter import font
+from tkinter import messagebox
 
 class Board:
     """A Boggle-style gameboard"""
@@ -125,19 +126,31 @@ class ConsoleGame (Game):
 class GuiGame (Game): # may separate these into different classes for each window
 
     board_window = tkinter.Tk()
-    search_window = tkinter.Tk()
-    score_window = tkinter.Tk()
+    search_window = tkinter.Toplevel(board_window)
+    score_window = tkinter.Toplevel(board_window)
+
+    board_window.withdraw()
+    search_window.withdraw()
+    score_window.withdraw()
+
+    search_entry = tkinter.Entry()
     
-    cells = []
+    cells = [] # may be duplicating the work of gamestate...refactor later
 
     disp_font = font.Font(size = 32)
     cell_settings = {'activebackground' : 'yellow',
                      'relief' : 'ridge',
                      'width' : 2}
-    active = set()
+    active = set()          # words which have been highlighted
+    active_player = None
 
-    def __init__(self):
+    def __init__(self, rows = 5, columns = 5):
+        
+        #initialise the parent class
+        super().__init__(rows, columns)
+        
         #board window
+        self.board_window.deiconify()
         for r, i in enumerate(self.gamestate.cells):
             self.cells.append([])
             for c, j in enumerate(i):
@@ -145,20 +158,33 @@ class GuiGame (Game): # may separate these into different classes for each windo
                 self.cells[r][c]['font'] = self.disp_font
                 self.cells[r][c].grid(row = r, column = c)
 
-        self.search_window() # show search window
-        self.score_window() # show score window
+        self.display_search_window() # show search window
+        self.display_score_window() # show score window
 
-    def search_window(self):
+    def display_search_window(self):
         """displays search window"""
+        self.search_window.deiconify()
         tkinter.Label(self.search_window, text = 'Word').grid(row=0,column=0)
-        tkinter.Entry(self.search_window).grid(row=0, column=1)
-        tkinter.Button(self.search_window, text = "go").grid(row=0, column=2)
+        self.search_entry = tkinter.Entry(self.search_window)
+        self.search_entry.grid(row=0, column=1)
+        tkinter.Button(self.search_window, text = "go", command = self.search_button).grid(row=0, column=2)
 
-    def score_window(self):
+    def display_score_window(self):
+        self.score_window.deiconify()
         for i in self.players:
             pass
 
-    def highlight(self, target = None):
+    def search_button(self):
+        text = self.search_entry.get()
+
+        #self.make_move(text, self.active_player)
+        try:
+            coords = self.gamestate.find_word(text) or []
+        except Exception:
+            coords = []
+        self.highlight(coords)
+
+    def highlight(self, target = []):
         """display the board, highlighting specified cells"""
         
         #remove existing highlighting
@@ -170,3 +196,45 @@ class GuiGame (Game): # may separate these into different classes for each windo
         #apply highlighting
         for i in self.active:
             self.cells[i[0]][i[1]].config(state = 'active')
+
+
+class Game:
+    row = 0
+    col = 0
+    
+    def __init__(self):
+        self.new_game()
+
+    def new_game(self):
+        top = self.top = tkinter.Toplevel()
+        
+        tkinter.Label(top, text="columns").pack()
+        self.columns = tkinter.Entry(top)
+        self.columns.pack()
+
+        tkinter.Label(top, text="rows").pack()
+        self.rows = tkinter.Entry(top)
+        self.rows.pack()
+
+        b = tkinter.Button(top, text="New Game", command=self.new_ok)
+        b.pack()
+
+    def new_ok(self):
+        #insert exception handling#
+
+        try:
+            self.col = int(self.columns.get())
+            self.row = int(self.rows.get())
+
+            assert self.col >= 1
+            assert self.row >= 1
+
+            self.top.withdraw()
+            self.game = GuiGame(self.row, self.col)
+            
+        except Exception:
+            messagebox.showerror("Invalid values", "Values must be whole numbers equal or greater than one")
+            
+
+if __name__ == '__main__':
+    instance = Game()
