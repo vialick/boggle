@@ -4,6 +4,8 @@ import tkinter
 from tkinter import font
 from tkinter import messagebox
 
+debug = True
+
 class Board:
     """A Boggle-style gameboard"""
     cells = []
@@ -95,22 +97,39 @@ class Board:
 
 class Game:
     gamestate = Board()
-    players = {}
+    players = []
     words = {}
 
     def __init__(self, height=5, width=5, playercount=2):
         self.gamestate = Board(height, width)
-        [self.players.update({i: {'score': 0, 'words': set()}}) for i in range(playercount)]  # fix to be proper player
+        self.players = [{'name': 'Player {}'.format(i), 'score' : 0} for i in range(1, playercount + 1)]  # fix to be proper player
 
-    def make_move(self, word, player):
-        if self.gamestate.search(word):
-            self.update_scores(word, player)
+    def make_move(self, word, player_no):
+        coords = self.gamestate.find_word(word)
+        if coords:
+            self.update_words(word, player_no, coords)
+            self.update_scores()
 
-    def update_scores(self, word, player):
+    def update_words(self, word, player_no, coords):
+                
         if word in self.words:
-            pass
+            self.words[word]['player'] = 'Excluded'
         else:
-            pass
+            self.words[word] = {'player': player_no, 'coords': coords, 'score': 1}
+            if debug: print('Added')
+
+    def update_scores(self):
+        scores = {}
+        for i in self.words:
+            if self.words[i]['player'] in scores:
+                scores['player'] += self.words[i]['score']
+            else:
+                scores['player'] = self.words[i]['score']
+        for i in self.players:
+            if i in scores:
+                self.players[i]['score'] = scores[i]
+            else:
+                self.players[i]['score'] = 0
 
 
 class ConsoleGame (Game):
@@ -142,12 +161,14 @@ class GuiGame (Game): # may separate these into different classes for each windo
                      'relief' : 'ridge',
                      'width' : 2}
     active = set()          # words which have been highlighted
-    active_player = None
+    active_player = 0
 
-    def __init__(self, rows = 5, columns = 5):
+    player_buttons = []
+
+    def __init__(self, rows = 5, columns = 5, playercount = 2):
         
         #initialise the parent class
-        super().__init__(rows, columns)
+        super().__init__(rows, columns, playercount)
         
         #board window
         self.board_window.deiconify()
@@ -168,11 +189,26 @@ class GuiGame (Game): # may separate these into different classes for each windo
         self.search_entry = tkinter.Entry(self.search_window)
         self.search_entry.grid(row=0, column=1)
         tkinter.Button(self.search_window, text = "go", command = self.search_button).grid(row=0, column=2)
+        for x,i in enumerate(self.players):
+            tkinter.Button(self.search_window, text = i['name'], command = lambda p = x:self.set_active(p)).grid(row=1,column=x)
+
+    def set_active(self, player_no):
+        self.active_player = player_no
 
     def display_score_window(self):
         self.score_window.deiconify()
-        for i in self.players:
-            pass
+
+        ex_name = tkinter.Label(self.score_window, text='Excluded')
+        ex_name.grid(row = 0, column = 0)
+        ex_score = tkinter.Label(self.score_window, text='0') # FIX
+        ex_score.grid(row = 1, column = 0)
+        
+        for i,j in enumerate(self.players):
+            p_name = tkinter.Label(self.score_window, text=j['name'])
+            p_name.grid(row=0, column=i+1)
+
+            p_score = tkinter.Label(self.score_window, text=j['score'])
+            p_score.grid(row = 1, column = i+1)
 
     def search_button(self):
         text = self.search_entry.get()
@@ -198,7 +234,7 @@ class GuiGame (Game): # may separate these into different classes for each windo
             self.cells[i[0]][i[1]].config(state = 'active')
 
 
-class Game:
+class NewGame:
     row = 0
     col = 0
     
@@ -216,6 +252,10 @@ class Game:
         self.rows = tkinter.Entry(top)
         self.rows.pack()
 
+        tkinter.Label(top, text="players").pack()
+        self.players = tkinter.Entry(top)
+        self.players.pack()
+
         b = tkinter.Button(top, text="New Game", command=self.new_ok)
         b.pack()
 
@@ -225,16 +265,18 @@ class Game:
         try:
             self.col = int(self.columns.get())
             self.row = int(self.rows.get())
+            self.player_count = int(self.players.get())
 
             assert self.col >= 1
             assert self.row >= 1
+            assert self.player_count >= 1
 
             self.top.withdraw()
-            self.game = GuiGame(self.row, self.col)
+            self.game = GuiGame(self.row, self.col, self.player_count)
             
         except Exception:
             messagebox.showerror("Invalid values", "Values must be whole numbers equal or greater than one")
             
 
-if __name__ == '__main__':
-    instance = Game()
+#if __name__ == '__main__':
+#    instance = NewGame()
