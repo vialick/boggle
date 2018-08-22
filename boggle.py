@@ -102,7 +102,7 @@ class Game:
 
     def __init__(self, height=5, width=5, playercount=2):
         self.gamestate = Board(height, width)
-        self.players = [{'name': 'Player {}'.format(i), 'score' : 0} for i in range(1, playercount + 1)]  # fix to be proper player
+        self.players = [{'name': 'Player {}'.format(i), 'score' : 0} for i in range(1, playercount + 1)]
 
     def make_move(self, word, player_no):
         coords = self.gamestate.find_word(word)
@@ -111,21 +111,24 @@ class Game:
             self.update_scores()
 
     def update_words(self, word, player_no, coords):
-                
+
+        # exclude existing words
+        # only exclude words that belong to other players
         if word in self.words:
-            self.words[word]['player'] = 'Excluded'
+            if self.words[word]['player'] is not player_no:
+                self.words[word]['player'] = 'Excluded'
         else:
             self.words[word] = {'player': player_no, 'coords': coords, 'score': 1}
-            if debug: print('Added')
 
     def update_scores(self):
         scores = {}
         for i in self.words:
             if self.words[i]['player'] in scores:
-                scores['player'] += self.words[i]['score']
+                scores[self.words[i]['player']] += self.words[i]['score']
             else:
-                scores['player'] = self.words[i]['score']
-        for i in self.players:
+                scores[self.words[i]['player']] = self.words[i]['score']
+
+        for i in range(len(self.players)):
             if i in scores:
                 self.players[i]['score'] = scores[i]
             else:
@@ -145,13 +148,7 @@ class ConsoleGame (Game):
 class GuiGame (Game): # may separate these into different classes for each window
 
     board_window = tkinter.Tk()
-    search_window = tkinter.Toplevel(board_window)
-    score_window = tkinter.Toplevel(board_window)
-
     board_window.withdraw()
-    search_window.withdraw()
-    score_window.withdraw()
-
     search_entry = tkinter.Entry()
     
     cells = [] # may be duplicating the work of gamestate...refactor later
@@ -161,17 +158,28 @@ class GuiGame (Game): # may separate these into different classes for each windo
                      'relief' : 'ridge',
                      'width' : 2}
     active = set()          # words which have been highlighted
-    active_player = 0
 
-    player_buttons = []
 
     def __init__(self, rows = 5, columns = 5, playercount = 2):
         
         #initialise the parent class
         super().__init__(rows, columns, playercount)
+
+        #initialise the players
+        self.scores = []
+        for i in self.players:
+            self.scores.append(tkinter.IntVar(value=0))
+
+        self.excluded_words = tkinter.StringVar()
+        self.player_words = []
+        self.excluded_score = tkinter.IntVar()
+        
+        for i in self.players:
+            self.player_words.append(tkinter.StringVar())
         
         #board window
         self.board_window.deiconify()
+        
         for r, i in enumerate(self.gamestate.cells):
             self.cells.append([])
             for c, j in enumerate(i):
@@ -182,43 +190,39 @@ class GuiGame (Game): # may separate these into different classes for each windo
         self.display_search_window() # show search window
         self.display_score_window() # show score window
 
+
     def display_search_window(self):
         """displays search window"""
-        self.search_window.deiconify()
+        self.search_window = tkinter.Toplevel(self.board_window)
+
+        #word searching
         tkinter.Label(self.search_window, text = 'Word').grid(row=0,column=0)
         self.search_entry = tkinter.Entry(self.search_window)
         self.search_entry.grid(row=0, column=1)
         tkinter.Button(self.search_window, text = "go", command = self.search_button).grid(row=0, column=2)
+
+        #active player selection
+        self.player_buttons = []
+        self.active_player = tkinter.IntVar(value=0)
         for x,i in enumerate(self.players):
-            tkinter.Button(self.search_window, text = i['name'], command = lambda p = x:self.set_active(p)).grid(row=1,column=x)
+            self.player_buttons.append(tkinter.Radiobutton(self.search_window,
+                                                           text = i['name'],
+                                                           variable = self.active_player,
+                                                           indicatoron = False,
+                                                           value = x))           
+            self.player_buttons[x].grid(row=1,column=x)
 
-    def set_active(self, player_no):
-        self.active_player = player_no
-
-    def display_score_window(self):
-        self.score_window.deiconify()
-
-        ex_name = tkinter.Label(self.score_window, text='Excluded')
-        ex_name.grid(row = 0, column = 0)
-        ex_score = tkinter.Label(self.score_window, text='0') # FIX
-        ex_score.grid(row = 1, column = 0)
-        
-        for i,j in enumerate(self.players):
-            p_name = tkinter.Label(self.score_window, text=j['name'])
-            p_name.grid(row=0, column=i+1)
-
-            p_score = tkinter.Label(self.score_window, text=j['score'])
-            p_score.grid(row = 1, column = i+1)
 
     def search_button(self):
         text = self.search_entry.get()
 
-        #self.make_move(text, self.active_player)
+        self.make_move(text, self.active_player.get())
         try:
-            coords = self.gamestate.find_word(text) or []
+            coords = self.words[text]['coords']
         except Exception:
             coords = []
         self.highlight(coords)
+        self.update_score_window()
 
     def highlight(self, target = []):
         """display the board, highlighting specified cells"""
@@ -232,6 +236,42 @@ class GuiGame (Game): # may separate these into different classes for each windo
         #apply highlighting
         for i in self.active:
             self.cells[i[0]][i[1]].config(state = 'active')
+
+    def display_score_window(self):
+        self.score_window = tkinter.Toplevel(self.board_window)
+
+        #Player labels and scores
+        ex_name = tkinter.Label(self.score_window, text='Excluded')
+        ex_name.grid(row = 0, column = 0)
+        ex_score = tkinter.Label(self.score_window, textvariable=self.excluded_score) # FIX
+        ex_score.grid(row = 1, column = 0)
+        ex_words = tkinter.Label(self.score_window, textvariable = self.excluded_words)
+        ex_words.grid(row = 2, column = 0)
+        
+        for i,j in enumerate(self.players):
+            
+            p_name = tkinter.Label(self.score_window, text=j['name'])
+            p_name.grid(row=0, column=i+1)
+
+            p_score = tkinter.Label(self.score_window, textvariable=self.scores[i])
+            p_score.grid(row = 1, column = i+1)
+
+            p_words = tkinter.Label(self.score_window, textvariable=self.player_words[i])
+            p_words.grid(row = 2, column = i+1)
+
+    def update_score_window(self):
+
+        #excludes
+        self.excluded_score.set(len([*filter(lambda y: self.words[y]['player']=='Excluded', self.words)]))
+        self.excluded_words.set("\n".join([*filter(lambda y: self.words[y]['player']=='Excluded', self.words)]))
+        
+        for i in range(len(self.players)):
+            self.scores[i].set(self.players[i]['score'])
+
+        #words used
+        for i in range(len(self.players)):
+            self.player_words[i].set("\n".join([*filter(lambda y: self.words[y]['player']==i, self.words)]))
+            
 
 
 class NewGame:
