@@ -12,7 +12,35 @@ class Board:
     height = 0
     width = 0
 
-    letter_dist = OrderedDict({ 'a': 	0.08167,
+    # scrabble distribution
+    letter_dist = OrderedDict({ 'a':	0.090909091,
+                                'b':	0.111111111,
+                                'c':	0.131313131,
+                                'd':	0.171717172,
+                                'e':	0.303030303,
+                                'f':	0.323232323,
+                                'g':	0.353535354,
+                                'h':	0.373737374,
+                                'i':	0.464646465,
+                                'j':	0.474747475,
+                                'k':	0.484848485,
+                                'l':	0.525252525,
+                                'm':	0.545454545,
+                                'n':	0.606060606,
+                                'o':	0.686868687,
+                                'p':	0.707070707,
+                                'q':	0.717171717,
+                                'r':	0.777777778,
+                                's':	0.818181818,
+                                't':	0.878787879,
+                                'u':	0.919191919,
+                                'v':	0.939393939,
+                                'w':	0.95959596,
+                                'x':	0.96969697,
+                                'y':	0.98989899,
+                                'z':	1})
+
+    letter_dist_bkup = OrderedDict({ 'a': 	0.08167,
                                 'b': 	0.09659,
                                 'c': 	0.12441,
                                 'd': 	0.16694,
@@ -96,11 +124,11 @@ class Board:
 
 
 class Game:
-    gamestate = Board()
-    players = []
-    words = {}
 
     def __init__(self, height=5, width=5, playercount=2):
+        self.gamestate = Board()
+        self.players = []
+        self.words = {}
         self.gamestate = Board(height, width)
         self.players = [{'name': 'Player {}'.format(i), 'score' : 0} for i in range(1, playercount + 1)]
 
@@ -108,6 +136,11 @@ class Game:
         coords = self.gamestate.find_word(word)
         if coords:
             self.update_words(word, player_no, coords)
+            self.update_scores()
+
+    def remove_word(self, word):
+        if word in self.words:
+            self.words.pop(word)
             self.update_scores()
 
     def update_words(self, word, player_no, coords):
@@ -153,14 +186,18 @@ class GuiGame (Game): # may separate these into different classes for each windo
 
     board_font = font.Font(size = 64)
     disp_font = font.Font(size = 22)
+
+    board_bg = 'white'
+    board_hl = 'yellow'
     
-    cell_settings = {'activebackground' : 'yellow',
+    cell_settings = {#'activebackground' : 'yellow',
                      'relief' : 'ridge',
                      'width' : 2}
     active = set()          # words which have been highlighted
 
 
     def __init__(self, rows = 5, columns = 5, playercount = 2):
+        (self.rows, self.columns, self.playercount) = (rows, columns, playercount)
         
         #initialise the parent class
         super().__init__(rows, columns, playercount)
@@ -194,9 +231,21 @@ class GuiGame (Game): # may separate these into different classes for each windo
 
         self.board_window.config(menu=self.menu_bar)
 
-        # display the board
-        # This should be made into a separate function
+        # display the windows
         
+        self.update_board_window()
+        self.display_search_window() # show search window
+        self.display_score_window() # show score window
+
+        #bring to the top
+        self.board_window.attributes('-topmost', 1)
+        self.board_window.attributes('-topmost', 0)
+
+        #self.board_window.mainloop()
+
+
+    def update_board_window(self):
+        self.cells = []
         for r, i in enumerate(self.gamestate.cells):
             self.cells.append([])
             for c, j in enumerate(i):
@@ -204,8 +253,6 @@ class GuiGame (Game): # may separate these into different classes for each windo
                 self.cells[r][c]['font'] = self.board_font
                 self.cells[r][c].grid(row = r, column = c)
 
-        self.display_search_window() # show search window
-        self.display_score_window() # show score window
 
 
     def display_search_window(self):
@@ -222,8 +269,9 @@ class GuiGame (Game): # may separate these into different classes for each windo
         #word searching
         tkinter.Label(self.search_window, text = 'Word', font = self.disp_font).grid(row=0,column=0)
         self.search_entry = tkinter.Entry(self.search_window, font = self.disp_font)
-        self.search_entry.grid(row=0, column=1)
-        tkinter.Button(self.search_window, text = "go", command = self.search_button, font = self.disp_font).grid(row=0, column=2)
+        self.search_entry.grid(row=0, column=1, columnspan=len(self.players)-1 or 1, sticky='ew')
+        tkinter.Button(self.search_window, text = "go", command = self.search_button,
+                       font = self.disp_font).grid(row=0, column=len(self.players), sticky='e')
 
         #active player selection
         self.player_buttons = []
@@ -258,13 +306,13 @@ class GuiGame (Game): # may separate these into different classes for each windo
         
         #remove existing highlighting
         for i in self.active:
-            self.cells[i[0]][i[1]].config(state = 'normal')
+            self.cells[i[0]][i[1]].config(bg = self.board_bg)
 
         self.active = target
 
         #apply highlighting
         for i in self.active:
-            self.cells[i[0]][i[1]].config(state = 'active')
+            self.cells[i[0]][i[1]].config(bg = self.board_hl)
 
     def display_score_window(self):
         """display the score window"""
@@ -281,26 +329,22 @@ class GuiGame (Game): # may separate these into different classes for each windo
         #Player labels and scores
         ex_name = tkinter.Label(self.score_window, text='Excluded',
                                 font = self.disp_font, fg = 'red')
-        ex_name.grid(row = 0, column = 0)
+        ex_name.grid(row = 0, column = 0, columnspan = 2)
         ex_score = tkinter.Label(self.score_window, textvariable=self.excluded_score,
                                  font = self.disp_font, fg = 'red')
-        ex_score.grid(row = 1, column = 0)
-        ex_words = tkinter.Label(self.score_window, textvariable = self.excluded_words,
-                                 font = self.disp_font, fg = 'red')
-        ex_words.grid(row = 2, column = 0)
+        ex_score.grid(row = 1, column = 0, columnspan = 2)
         
         for i,j in enumerate(self.players):
+            col = (i+1) * 2
             
             p_name = tkinter.Label(self.score_window, text=j['name'], font = self.disp_font)
-            p_name.grid(row=0, column=i+1)
+            p_name.grid(row=0, column=col)
 
-            p_score = tkinter.Label(self.score_window, textvariable=self.scores[i], font = self.disp_font)
-            p_score.grid(row = 1, column = i+1)
+            p_score = tkinter.Label(self.score_window, textvariable=self.scores[i],
+                                    font = self.disp_font)
+            p_score.grid(row = 1, column = col, columnspan = 2)
 
-            p_words = tkinter.Label(self.score_window, textvariable=self.player_words[i], font = self.disp_font)
-            p_words.grid(row = 2, column = i+1)
-
-    def update_score_window(self):
+    def update_score_window_old(self):
 
         #excludes
         excluded = [i for i in self.words if self.words[i]['player'] == 'Excluded']
@@ -315,9 +359,37 @@ class GuiGame (Game): # may separate these into different classes for each windo
             #self.player_words[i].set('\n'.join([i for i in self.words if self.words[i]['player'] == p]))
             self.player_words[i].set("\n".join([*filter(lambda y: self.words[y]['player']==i, self.words)]))
 
-    def new_game(self):
-        messagebox.showerror("Not yet implemented","This function has not yet been implemented")
-        pass
+    def update_score_window(self):
+
+        # update scores
+        self.excluded_score.set(len([i for i in self.words if self.words[i]['player'] == 'Excluded']))
+        for i in range(len(self.players)):
+            self.scores[i].set(self.players[i]['score'])
+
+        # build button if no button exists
+        for i in self.words:
+            if self.words[i].get('button'):
+                pass
+            else:
+                self.words[i]['label'] = tkinter.Label(self.score_window, text = i, font = self.disp_font)
+                self.words[i]['button'] = tkinter.Button(self.score_window, text = 'X',
+                                                         command = lambda y = i: self.remove_button(y))
+
+        # sort the word lists, set row to resultant sort, place items in grid
+        for player in ['Excluded', *range(len(self.players))]:
+            #Until excluded is fixed workaround is needed
+            col = 0 if player == 'Excluded' else (player + 1) * 2
+
+            words = sorted([x for x in self.words if self.words[x]['player'] == player])
+            [self.words[i]['label'].grid(row = 2 + x, column = col) for x, i in enumerate(words)]
+            [self.words[i]['button'].grid(row = 2 + x, column = col+1) for x, i in enumerate(words)]
+
+    def remove_button(self, word):
+        self.words[word]['label'].grid_forget()
+        self.words[word]['button'].grid_forget()
+        self.remove_word(word)
+        self.update_score_window()
+        
 
     def display_pref_window(self):
         """display the preference window"""
@@ -333,11 +405,13 @@ class GuiGame (Game): # may separate these into different classes for each windo
 
         self.pref_window = tkinter.Toplevel(self.board_window)
         board_size_entry = tkinter.Entry(self.pref_window)
+        board_size_entry.insert(0, self.board_font['size'])
         board_size_entry.grid(row=0, column=0)
         tkinter.Label(self.pref_window, text = "Board font size").grid(row=0, column = 1)
         
         disp_size_entry = tkinter.Entry(self.pref_window)
         disp_size_entry.grid(row=1, column=0)
+        disp_size_entry.insert(0, self.disp_font['size'])
         tkinter.Label(self.pref_window, text = "Display font size").grid(row=1, column = 1)
         
 
@@ -349,6 +423,12 @@ class GuiGame (Game): # may separate these into different classes for each windo
     def set_prefs(self, board_size, disp_size):
         self.board_font['size'] = int(board_size)
         self.disp_font['size'] = int(disp_size)
+
+    def new_game(self):
+        # Not happy with this implementation, but it works
+        self.score_window.destroy()
+        self.search_window.destroy()
+        self.__init__(rows = self.rows, columns = self.columns, playercount = self.playercount)
 
 
 class NewGame:
