@@ -9,7 +9,7 @@ class Board:
     height = 0
     width = 0
 
-    def __init__(self, height=5, width=5, generator=generators.TwoGram):
+    def __init__(self, height=5, width=5, generator=generators.Dice):
         """initialise the board"""
         (self.height, self.width) = (height, width)
         #self.set_board()

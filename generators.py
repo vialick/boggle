@@ -8,8 +8,8 @@ class NoWeight:
 
         
 
-class TwoGram:
-    """Build a board based on 2-gram data"""
+class BiGram:
+    """Build a board based on bigram data"""
 
     ngrams = {'a':
                 {'a': 79794787, 'b': 6479202253, 'c': 12625666388, 'd': 10375130449,
@@ -325,3 +325,52 @@ class DistributionBoard:
                       for j in range(rows)]
 
         return board
+
+class Dice:
+    """Builds a board based on the Boggle dice."""
+
+    dice = [('qu', 'b', 'z', 'j', 'x', 'k'),
+            ('h', 'h', 'l', 'r', 'd', 'o'),
+            ('t', 'e', 'l', 'p', 'c', 'i'),
+            ('t', 't', 'o', 't', 'e', 'm'),
+            ('a', 'e', 'a', 'e', 'e', 'e'),
+            ('n', 'h', 'd', 't', 'h', 'o'),
+            ('t', 'o', 'u', 'o', 't', 'o'),
+            ('s', 's', 'n', 's', 'e', 'u'),
+            ('s', 'c', 't', 'i', 'e', 'p'),
+            ('y', 'i', 'f', 'p', 's', 'r'),
+            ('o', 'v', 'w', 'r', 'g', 'r'),
+            ('l', 'h', 'n', 'r', 'o', 'd'),
+            ('r', 'i', 'y', 'p', 'r', 'h'),
+            ('e', 'a', 'n', 'd', 'n', 'n'),
+            ('e', 'e', 'e', 'e', 'm', 'a'),
+            ('a', 'a', 'a', 'f', 's', 'r'),
+            ('a', 'f', 'a', 'i', 's', 'r'),
+            ('d', 'o', 'r', 'd', 'l', 'n'),
+            ('m', 'n', 'n', 'e', 'a', 'g'),
+            ('i', 't', 'i', 't', 'i', 'e'),
+            ('a', 'u', 'm', 'e', 'e', 'g'),
+            ('y', 'i', 'f', 'a', 's', 'r'),
+            ('c', 'c', 'w', 'n', 's', 't'),
+            ('u', 'o', 't', 'o', 'w', 'n'),
+            ('e', 't', 'i', 'l', 'i', 'c')]
+    def build_board(self, rows, columns):
+        
+        cellcount = rows*columns
+        passes = cellcount -1 // 25 + 1 # there must be an easier way
+
+        out = []
+
+        for i in range(passes):
+            dice = self.dice
+            random.shuffle(dice)
+
+            for j in dice:
+                out.append(random.choice(j))
+
+        return [[out.pop() for _ in range(columns)] for _ in range(rows)]
+            
+# A listing of each generator and associated info.
+generatorlist = {NoWeight: {},
+                 BiGram: {},
+                 DistributionBoard: {}}
